@@ -110,6 +110,10 @@ function mount_keys() {
 
 function umount_volumes() {
   while read enc volume mount fs options; do
+    case "$enc" in
+      ""|\#*) continue;;
+    esac
+
     options=${options-none}
   
     echo " + umounting /dev/mapper/dmcrypt-$enc - $fs - $mount"
@@ -120,6 +124,10 @@ function umount_volumes() {
   done < "$cfg_fstab"
 
   while read enc volume mount; do
+    case "$enc" in
+      ""|\#*) continue;;
+    esac
+
     echo "   + removing device mapper/dmcrypt-$enc"
     cryptsetup luksClose /dev/mapper/"dmcrypt-$enc" || {
       echo "cryptsetup luksClose /dev/mapper/dmcrypt-$enc -- failed!"
@@ -131,6 +139,10 @@ function umount_volumes() {
 function mount_volumes() {
   echo " + setting up crypt devices"
   while read enc volume mount; do
+    case "$enc" in
+      ""|\#*) continue;;
+    esac
+
     test -f "$cfg_key_mount/$volume-$enc.key" || {
       echo "Skipping $cfg_key_mount/$volume-$enc.key - file does not exist"
       continue
@@ -152,6 +164,10 @@ function mount_volumes() {
   
   echo " + mounting devices"
   while read enc volume mount fs options; do
+    case "$enc" in
+      ""|\#*) continue;;
+    esac
+
     options=${options-none}
   
     if mount |grep /dev/mapper/dmcrypt-$enc &>/dev/null; then
