@@ -1,20 +1,24 @@
 #!/bin/bash -e
 
 : <<=cut
-# Copyright (C) 2006-2013 Carlo Contavalli, Andrea Ciancone, Fernando Vezzosi
-#
-# Mounts a list of encrypted LVM volumes by using a disk stored keyfile and a
-# passphrase. Configuration is simple.
+=pod
 
-# To create the keys volume:
-#   lvcreate -L 100M -n encrypted-keys system 
-#   cryptsetup luksFormat /dev/system/encrypted-keys --cipher=aes-cbc-essiv:sha256 --key-size=256 --verify-passphrase 
-#   cryptsetup luksOpen /dev/system/encrypted-keys dmcrypt-keys
-#   mkfs.ext3 /dev/mapper/dmcrypt-keys
-# 
-# To create a new volume:
-#   $0 create-volume group name
-#   
+=head1
+
+Mounts a list of encrypted LVM volumes by using a disk stored keyfile and a
+passphrase. Configuration is simple.
+
+To create the keys volume:
+  lvcreate -L 100M -n encrypted-keys system 
+  cryptsetup luksFormat /dev/system/encrypted-keys --cipher=aes-cbc-essiv:sha256 --key-size=256 --verify-passphrase 
+  cryptsetup luksOpen /dev/system/encrypted-keys dmcrypt-keys
+  mkfs.ext3 /dev/mapper/dmcrypt-keys
+
+To create a new volume:
+  $0 create-volume group name
+
+Copyright (C) 2006-2013 Carlo Contavalli, Andrea Ciancone, Fernando Vezzosi
+  
 =cut
 
 cfg_fstab=${cfg_fstab-/opt/scripts/conf/ac-fstab}
@@ -22,14 +26,20 @@ cfg_key_mount=${cfg_key_mount-/mnt/keys}
 cfg_key_volume=${cfg_key_volume-system/encrypted-keys}
 cfg_attempts=5
 
+function error() {
+  script=$(readlink -f $(which $0))
+
+  echo "$2" 1>&2
+  echo "Use 'perldoc $script' for usage instructions." 1>&2
+  exit $1
+}
+
 test -f "$cfg_fstab" || {
-  echo "fstab $cfg_fstab does not exist!" 1>&2
-  exit 3
+  error 3 "fstab $cfg_fstab does not exist!" 1>&2
 }
 
 test -b "/dev/$cfg_key_volume" || {
-  echo "volume containing keys does not exist, /dev/$cfg_key_volume" 1>&2;
-  exit 3
+  error 3 "volume containing keys does not exist, /dev/$cfg_key_volume" 1>&2;
 }
 
 test -d "$cfg_key_mount" || {
