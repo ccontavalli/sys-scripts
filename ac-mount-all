@@ -269,6 +269,6 @@ case $1 in
 
   
   *)
-    echo "help screen";
+    error 1 "unrecognized option $1, typo, maybe?"
     ;;
 esac
