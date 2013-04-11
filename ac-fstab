@@ -1,2 +1,7 @@
+#######
+# Do not EDIT! This is just an example, your real config is most likely
+# in a different directory.
+#######
+#
 # LV Name  VG Name  Mount point  FS    Options
 mysql      system   /opt/mysql   ext3  nodev,nosuid,noexec,data=journal,commit=600,relatime,nodiratime,barrier=1
