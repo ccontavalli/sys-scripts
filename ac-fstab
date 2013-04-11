@@ -1,0 +1,1 @@
+mysql	system	/opt/mysql 	ext3	nodev,nosuid,noexec,data=journal,commit=600,relatime,nodiratime,barrier=1

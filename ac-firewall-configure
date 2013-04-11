@@ -1,0 +1,61 @@
+#!/opt/scripts/lsc
+##!/bin/bash -x
+#
+# Basic firewalling rules: no IPv6, drop everything inbound and outbound.
+# Copyright (C) 2009 - Carlo Contavalli
+
+ip6tables {
+  -X
+  -F
+
+  -P {
+    INPUT DROP
+    OUTPUT DROP
+    FORWARD DROP
+  }
+
+  -A INPUT {
+    -i lo -j ACCEPT
+    -m state --state ESTABLISHED,RELATED -j ACCEPT
+  }
+  -A OUTPUT {
+    -o lo -j ACCEPT
+  }
+}
+
+iptables {
+  -t filter {
+    -F
+    -X
+    -P {
+      INPUT DROP
+      OUTPUT DROP
+      FORWARD DROP
+    }
+    -N {
+      in-external
+      out-external
+    }
+    -A INPUT {
+      -i lo -j ACCEPT
+      -i eth0 -j in-external
+    }
+    -A OUTPUT {
+      -o lo -j ACCEPT
+      -o eth0 -j out-external
+    }
+    -A out-external {
+      -m owner --gid-owner network -j ACCEPT
+      -m owner --uid-owner postfix -j ACCEPT
+      -m owner --gid-owner postfix -j ACCEPT
+      -m state --state ESTABLISHED,RELATED -j ACCEPT
+      -p tcp -j REJECT --reject-with tcp-reset
+    }
+    -A in-external {
+      -m state --state ESTABLISHED,RELATED -j ACCEPT
+      -m hashlimit -m tcp -p tcp --dport 22 --hashlimit 1/min --hashlimit-mode srcip --hashlimit-name ssh -m state --state NEW -j ACCEPT
+      -p tcp -j REJECT --reject-with tcp-reset
+      -j DROP
+    }
+  }
+}

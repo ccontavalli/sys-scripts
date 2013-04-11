@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Dead simple script to backup an entire system with rsync. Mostly useful to
+# have a good starting point in terms of options and excluded directories.
+
+user=${user-root}
+options=${options-hHaAX}
+host="$1"
+target="$2"
+
+test -n "$host" || {
+  echo "must supply hostname to backup" 1>&2
+  exit 1
+}
+
+test -n "$target" || {
+  echo "must supply destination directory" 1>&2;
+  exit 2
+}
+
+rsync -v$options --delete --exclude="/mnt/" --exclude="/proc/" \
+       --exclude="/sys/" --exclude="/media/" --exclude="/dev/" \
+       --numeric-ids --progress --bwlimit=200 "$user"@"$host":/ "$target"

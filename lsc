@@ -1,0 +1,190 @@
+#!/usr/bin/perl -w
+
+# Lazy SCripter version 0.02 
+#
+# Copyright (C) 2001-2013 Carlo Contavalli <ccontavalli@gmail.com>
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+###############################################################################
+# 
+#  Read the included README file for info on how to use this 
+#  program.
+#
+
+use FindBin qw($Bin);
+use lib "$Bin/../perl";
+
+$0 =~ s/.*\/(.*)$/$1/g;
+my $help = << "End.";
+Lazy SCripter version 0.2
+
+$0 [-n[i]] filename
+  -n Do not execute 	Do not execute the generated commands.
+			Just print the commands on the console.
+  -i Print info 	Used in conjunction with -n, makes lsc
+  			print command number and input file line
+			for each command it executes.
+Generates single line commands from a nested file.
+End.
+ 
+use strict;
+
+my $debug=0;
+my $noex=0;
+my $op=0;
+my $paren=0;
+my $info=0;
+my $fin;
+
+my (@stack);
+my $filename; 
+my $arg;
+
+while($arg=shift(@ARGV))
+{
+  if($arg=~ /^-/ && !$op)
+  {
+    if($arg eq '--') 	 { $op=1; 		}
+    if($arg =~ /n/) 	 { $debug=$noex=1;  	}
+    if($arg =~ /i/) 	 { $info=1;	  	}
+    if($arg =~ /[^in-]/) { print $help; exit 1;	}
+  }
+  else {
+    $filename .= "$arg";
+  }  
+}
+
+$op=0;
+select((select(STDERR), $|=1)[0]) if($debug);
+$|=1;
+
+sub doit($)
+{
+  my ($line) = @_;
+
+  $paren++ if($line =~ /^{/);
+  $paren-- if($line =~ /^}/);
+  
+  if($line !~ /^{/)
+  {
+    if($op)
+    { 
+      mexec(join(" ", @stack));
+      pop(@stack);
+    }
+
+    if($line =~ /^}/)
+    {  
+      pop(@stack);
+    }
+    else
+    {
+      $op=1;
+      push(@stack, $line);
+      return;
+    }
+  }
+  $op=0;
+}
+
+sub mysplit($)
+{
+  my ($tosplit) = @_;
+
+  $tosplit =~ s/\s*[^%]({|}|#.*)\s*\n?/\n$1\n/gm;  # Put { } and comments on single lines
+  $tosplit =~ s/^\s*(.*?)\s*?$/$1/gm;	 	   # Get rid of spaces at the beginning and at the end of every line
+
+  $tosplit =~ s/[ \t]{2,}/ /gm;	 		   # Get rid of all double spaces
+
+  return split(/\n/m, $tosplit);	 	   # Split the string in multiple lines
+}
+
+my $currl=0;
+my $curel=0;
+sub mexec($)
+{
+  my ($toexec) = @_;
+
+  $toexec =~ s/%(\S)/$1/gm;
+  print ++$curel . " " . ($currl-1) . " " if ($debug && $info);
+  print $toexec . "\n" if($debug);
+  print SH $toexec . "\n" if(!$noex);
+}
+
+if(defined($filename)) {
+  open($fin, '<', $filename) || die("Unable to open '$filename': $!\n");
+} else {
+  $fin = *STDIN;
+}
+
+open(SH, "| /bin/sh") || die ("Cannot open sh!");
+select((select(SH), $|=1)[0]) if($debug);
+
+my @line;
+while(<$fin>)
+{
+  chomp($_);
+  $currl++;
+  
+  if(/^\s*\'/)
+  {
+    s/^\s*\'\s*(.*)/$1/g;  
+    mexec($_);
+    next;
+  }
+
+  push(@line, $_);
+
+  if(/\\\s*$/) # The line ends up with a slash
+  {
+    $line[$#line] =~ s/(.*)\\\s*$/$1 /g;
+    next;
+  }
+  
+  foreach (mysplit(join(" ", @line)))
+  {
+    if(/^\s*##!(.*)/)
+    { 
+      close(SH);
+      open(SH, "| $1") || die ("Cannot open specified shell!");
+      select((select(SH), $|=1)[0]) if($debug);
+    }
+    
+    next if(/^\s*$/ || /^\s*#.*$/); 	# Get rid of empty lines and comments
+    doit($_);
+    
+    if($paren < 0)
+    {
+      print STDERR "Warning: too many } at line $currl in file $filename\n";
+      close(SH);
+      exit 1;
+    }
+
+  }
+  undef(@line);
+}
+doit("}");
+
+if($paren > -1)
+{
+  print STDERR "Warning: too many { somewhere in $filename\n";
+  close (SH);
+  exit 1;
+}
+
+close(SH);
+
+

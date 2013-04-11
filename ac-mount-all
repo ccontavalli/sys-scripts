@@ -1,0 +1,214 @@
+#!/bin/bash -e
+
+# To create the keys volume:
+#   lvcreate -L 100M -n encrypted-keys system 
+#   cryptsetup luksFormat /dev/system/encrypted-keys --cipher=aes-cbc-essiv:sha256 --key-size=256 --verify-passphrase 
+#   cryptsetup luksOpen /dev/system/encrypted-keys dmcrypt-keys
+#   mkfs.ext3 /dev/mapper/dmcrypt-keys
+# 
+# To create a new volume:
+#   $0 create-volume group name
+#   
+
+# Copyright (C) 2006-2013 Carlo Contavalli, Andrea Ciancone, Fernando Vezzosi
+
+cfg_fstab=${cfg_fstab-/opt/scripts/ac-fstab}
+cfg_key_mount=${cfg_key_mount-/mnt/keys}
+cfg_key_volume=${cfg_key_volume-system/encrypted-keys}
+cfg_attempts=5
+
+test -f "$cfg_fstab" || {
+  echo "fstab $cfg_fstab does not exist!" 1>&2
+  exit 3
+}
+
+test -b "/dev/$cfg_key_volume" || {
+  echo "volume containing keys does not exist, /dev/$cfg_key_volume" 1>&2;
+  exit 3
+}
+
+test -d "$cfg_key_mount" || {
+  echo " + creating directory $cfg_key_mount, which does not exist."
+  mkdir -p "$cfg_key_mount";
+}
+
+function create_volume() {
+  volume_group=$1
+  volume_name=$2
+  
+  test -n "$volume_group" || {
+    echo "need to provide volume group name" 1>&2
+    exit 4
+  }
+  test -n "$volume_name" || {
+    echo "need to provide volume name" 1>&2
+    exit 4
+  }
+  echo " + generating random key"
+  dd iflag=fullblock if=/dev/urandom of=$cfg_key_mount/$volume_group-$volume_name.key bs=512 count=1
+
+  cat <<EOF
+To create volume, now run:
+
+lvcreate -L <size> -n encrypted-$volume_name $volume_group
+cryptsetup luksFormat /dev/$volume_group/encrypted-$volume_name \\
+    --cipher=aes-cbc-essiv:sha256 --key-size=256 --key-file=$cfg_key_mount/$volume_group-$volume_name.key
+cryptsetup luksOpen --key-file=$cfg_key_mount/$volume_group-$volume_name.key \\
+     /dev/$volume_group/encrypted-$volume_name dmcrypt-$volume_name
+mkfs.ext3 /dev/mapper/dmcrypt-$volume_name
+
+REMEMBER TO LOCK THE KEYS AFTERWARD!
+EOF
+}
+
+function protect_keys() {
+  # Make sure keys are not mounted... when we exit :)
+  trap 'umount "$cfg_key_mount" &>/dev/null && cryptsetup luksClose dmcrypt-keys &>/dev/null' EXIT
+}
+
+function umount_keys() {
+  echo " + umounting keys"
+  umount "$cfg_key_mount" || true
+  echo " + removing keys"
+  cryptsetup luksClose dmcrypt-keys
+}
+
+function mount_keys() {
+  mountoptions=${1-ro}
+  echo " + trying to mount keys."
+  for attempt in `seq 1 $cfg_attempts`; do 
+    cryptsetup luksOpen "/dev/$cfg_key_volume" dmcrypt-keys
+    true || fsck -n /dev/mapper/dmcrypt-keys &>/dev/null || { 
+      status="$?"; 
+      test "$status" == "8" || break; 
+      echo "wrong password? please try again..."
+      cryptsetup luksClose dmcrypt-keys
+      continue
+    }
+  
+    status=0
+    break
+  done
+  
+  test "$status" == 0 || {
+    echo "fsck -n /dev/mapper/dmcrypt-keys - failed ($status)! Please check partition manually" 1>&2
+    echo "make sure to run cryptsetup luksClose dmcrypt-keys when you are done!" 1>&2
+    exit 1
+  }
+  
+  echo " + mounting keyfile"
+  mount -o $mountoptions /dev/mapper/dmcrypt-keys "$cfg_key_mount" || {
+    echo "mount failed! Please check /dev/mapper/dmcrypt-keys manually!" 1>&2
+    exit 2
+  }
+}
+
+function umount_volumes() {
+  while read enc volume mount fs options; do
+    options=${options-none}
+  
+    echo " + umounting /dev/mapper/dmcrypt-$enc - $fs - $mount"
+    umount "$mount" || {
+      echo "umount failed. Device in use? skipped."
+      continue
+    }
+  done < "$cfg_fstab"
+
+  while read enc volume mount; do
+    echo "   + removing device mapper/dmcrypt-$enc"
+    cryptsetup luksClose /dev/mapper/"dmcrypt-$enc" || {
+      echo "cryptsetup luksClose /dev/mapper/dmcrypt-$enc -- failed!"
+      continue
+    }
+  done < "$cfg_fstab"
+}
+
+function mount_volumes() {
+  echo " + setting up crypt devices"
+  while read enc volume mount; do
+    test -f "$cfg_key_mount/$volume-$enc.key" || {
+      echo "Skipping $cfg_key_mount/$volume-$enc.key - file does not exist"
+      continue
+    }
+  
+    test ! -b "/dev/mapper/dmcrypt-$enc" || {
+      echo "  + device already decrypted, skipping mapper/dmcrypt-$enc"
+      continue
+    }
+  
+    echo "   + creating device mapper/dmcrypt-$enc"
+    cryptsetup --key-file="$cfg_key_mount/$volume-$enc.key" luksOpen "/dev/$volume/encrypted-$enc" "dmcrypt-$enc" || {
+      echo "cryptsetup --key-file=$cfg_key_mount/$volume-$enc.key luksOpen /dev/$volume/encrypted-$enc dmcrypt-$enc -- failed!"
+      continue
+    }
+  done < "$cfg_fstab"
+  
+  umount_keys
+  
+  echo " + mounting devices"
+  while read enc volume mount fs options; do
+    options=${options-none}
+  
+    if mount |grep /dev/mapper/dmcrypt-$enc &>/dev/null; then
+      echo "  + /dev/mapper/dmcrypt-$enc already mounted, skipping"
+      continue
+    fi
+  
+    test -b "/dev/mapper/dmcrypt-$enc" || {
+      echo "something bad happened - device /dev/mapper/dmcrypt-$enc does not exist"
+      exit 6
+    }
+  
+    test -d "$mount" || {
+      echo "mount point ($mount) for /dev/mapper/$enc does not exist - skipping"
+      continue
+    }
+  
+    echo " + fsck /dev/mapper/dmcrypt-$enc"
+    true || fsck -p /dev/mapper/"dmcrypt-$enc" || { 
+      echo "fsck on /dev/mapper/dmcrypt-$enc failed - please correct errors manually"
+      continue
+    }
+  
+    echo " + mounting /dev/mapper/dmcrypt-$enc - $fs - $mount"
+    mount -o "$options" -t "$fs" /dev/mapper/"dmcrypt-$enc" "$mount" || {
+      echo "mount of /dev/mapper/dmcrypt-$enc in $mount ($options - $fs) failed - please correct errors manually"
+      continue
+    }
+  done < "$cfg_fstab"
+}
+
+case $1 in
+  create-volume)
+    umount_keys &> /dev/null || true
+    mount_keys rw;
+    shift;
+    create_volume $@;
+    ;;
+
+  mount-keys)
+    shift;
+    mount_keys $@;
+    ;;
+
+  umount-keys)
+    umount_keys;
+    ;;
+
+  start)
+    umount_keys &> /dev/null || true
+    protect_keys;
+    mount_keys;
+    mount_volumes;
+    ;;
+
+  stop)
+    umount_keys &> /dev/null || true
+    umount_volumes;
+    ;;
+
+  
+  *)
+    echo "help screen";
+    ;;
+esac
