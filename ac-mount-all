@@ -1,5 +1,11 @@
 #!/bin/bash -e
 
+: <<=cut
+# Copyright (C) 2006-2013 Carlo Contavalli, Andrea Ciancone, Fernando Vezzosi
+#
+# Mounts a list of encrypted LVM volumes by using a disk stored keyfile and a
+# passphrase. Configuration is simple.
+
 # To create the keys volume:
 #   lvcreate -L 100M -n encrypted-keys system 
 #   cryptsetup luksFormat /dev/system/encrypted-keys --cipher=aes-cbc-essiv:sha256 --key-size=256 --verify-passphrase 
@@ -9,10 +15,9 @@
 # To create a new volume:
 #   $0 create-volume group name
 #   
+=cut
 
-# Copyright (C) 2006-2013 Carlo Contavalli, Andrea Ciancone, Fernando Vezzosi
-
-cfg_fstab=${cfg_fstab-/opt/scripts/ac-fstab}
+cfg_fstab=${cfg_fstab-/opt/scripts/conf/ac-fstab}
 cfg_key_mount=${cfg_key_mount-/mnt/keys}
 cfg_key_volume=${cfg_key_volume-system/encrypted-keys}
 cfg_attempts=5
@@ -78,7 +83,7 @@ function mount_keys() {
   echo " + trying to mount keys."
   for attempt in `seq 1 $cfg_attempts`; do 
     cryptsetup luksOpen "/dev/$cfg_key_volume" dmcrypt-keys
-    true || fsck -n /dev/mapper/dmcrypt-keys &>/dev/null || { 
+    fsck -n /dev/mapper/dmcrypt-keys &>/dev/null || { 
       status="$?"; 
       test "$status" == "8" || break; 
       echo "wrong password? please try again..."
@@ -165,7 +170,7 @@ function mount_volumes() {
     }
   
     echo " + fsck /dev/mapper/dmcrypt-$enc"
-    true || fsck -p /dev/mapper/"dmcrypt-$enc" || { 
+    fsck -p /dev/mapper/"dmcrypt-$enc" || { 
       echo "fsck on /dev/mapper/dmcrypt-$enc failed - please correct errors manually"
       continue
     }
