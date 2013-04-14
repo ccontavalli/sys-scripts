@@ -1,6 +1,6 @@
 #######
 # Do not EDIT! This is just an example, your real config is most likely
-# in a different directory.
+# in a different directory. Look at $cfg_fstab in ac-mount-all.
 #######
 #
 # LV Name  VG Name  Mount point  FS    Options
