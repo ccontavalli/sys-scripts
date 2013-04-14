@@ -13,16 +13,52 @@ ac-mount-all {start|stop|mount-keys|umount-keys|create-volume}
 
 =head1 DESCRIPTION
 
-Mounts a list of encrypted LVM volumes by using a disk stored keyfile and a
-passphrase. Configuration is simple.
+The main purpose of this script is to mount a set of encrypted devices
+on your system, asking for a single passphrase. This single passphrase
+unlocks a volume containing all the keys, each volume has a different
+key.
+
+It reads an fstab style configuration file to determine which partitions
+to mount, and which parameters to use.
+
+You must supply at least one parameter:
+
+=over 2
+
+=item start
+
+To mount all the encrypted volumes. Note that each volume will be properly
+checked for errors and then mounted. Already mounted volumes will be ignored,
+it is save to call this command multiple times on a running system.
+
+=item stop
+
+To unmount all the encrypted filesystems that can safely be unmounted.
+
+=item mount-keys
+
+To mount the partition containing all the encrypted keys. REMEMBER TO UNMOUNT THEM!
+Until then, your keys are exposed!
+
+=item umount-keys
+
+To unmount the partition containing all the encrypted keys.
+
+=item create-volume
+
+To create a new encrypted volume.
+
+=back
 
 =head1 SETUP
+
+Before running this script, you must:
 
 =over 2
 
 =item Install all the needed tools:
 
-  apt-get install cryptsetup
+  apt-get install cryptsetup lvm2
 
 =item Create a volume where to store all your keys:
 
@@ -33,6 +69,8 @@ passphrase. Configuration is simple.
   cryptsetup luksFormat /dev/system/encrypted-keys \
       --cipher=aes-cbc-essiv:sha256 --key-size=256 --verify-passphrase 
 
+Note that you can use whatever cipher and key size you like the most.
+
 =item Format the new volume:
  
   cryptsetup luksOpen /dev/system/encrypted-keys cleartext-keys
@@ -41,7 +79,11 @@ passphrase. Configuration is simple.
 =back
 
 To create a new volume:
-  $0 create-volume group name
+  $0 create-volume group name 20G /opt ext4 [extra arguments]
+
+This command will create a new volume 'name' in the volume group 'group'
+of size 20G. This volume will be mounted in /opt as an ext4 filesystem.
+The extra arguments are passed to the corresponding mkfs command.
 
 
 =head1 COPYRIGHT
@@ -53,6 +95,8 @@ Copyright (C) 2006-2013 Carlo Contavalli, Andrea Ciancone, Fernando Vezzosi
 cfg_fstab=${cfg_fstab-/opt/scripts/conf/ac-fstab}
 cfg_key_mount=${cfg_key_mount-/mnt/keys}
 cfg_key_volume=${cfg_key_volume-system/encrypted-keys}
+cfg_default_cipher=${cfg_default_cipher-aes-cbc-essiv:sha256}
+cfg_default_keysize=${cfg_default_keysize-256}
 cfg_attempts=5
 
 function error() {
@@ -63,12 +107,16 @@ function error() {
   exit $1
 }
 
-test -f "$cfg_fstab" || {
-  error 3 "fstab $cfg_fstab does not exist!" 1>&2
-}
+test -f "$cfg_fstab" || error 3 "fstab $cfg_fstab does not exist!"
 
 test -b "/dev/$cfg_key_volume" || {
-  error 3 "volume containing keys does not exist, /dev/$cfg_key_volume" 1>&2;
+  error 3 "volume containing keys does not exist, /dev/$cfg_key_volume."
+}
+
+test "$UID" == 0 || error 3 "must be root to use this script, 'sudo $0'."
+
+which lvs lvcreate cryptsetup &>/dev/null || {
+  error 3 "cannot find basic tools (lvs, lvcreate, cryptsetup)." 
 }
 
 test -d "$cfg_key_mount" || {
@@ -77,32 +125,45 @@ test -d "$cfg_key_mount" || {
 }
 
 function create_volume() {
+  # $0 create-volume group name 20G /opt ext4 [extra arguments]
+  test "$#" -ge 5 || {
+    error 4 "Syntax requires 'group name size mount-point fs [extra-arguments]."
+  }
+
   volume_group=$1
   volume_name=$2
+  volume_size=$3
+  mount_point=$4
+  file_system=$5
+  shift 5
   
-  test -n "$volume_group" || {
-    echo "need to provide volume group name" 1>&2
-    exit 4
+  which mkfs.$file_system &>/dev/null || {
+    error 5 "Cannot find mkfs.$file_system, don't know how to create $file_system volume."
   }
-  test -n "$volume_name" || {
-    echo "need to provide volume name" 1>&2
-    exit 4
-  }
+
+  echo " + creating volume $volume_group/encrypted-$volume_name of size $volume_size"
+  lvcreate -L "$volume_size" -n encrypted-$volume_name $volume_group
+  
   echo " + generating random key"
   dd iflag=fullblock if=/dev/urandom of=$cfg_key_mount/$volume_group-$volume_name.key bs=512 count=1
 
-  cat <<EOF
-To create volume, now run:
+  echo " + turning voluem $volume_group/encrypted-$volume_name into luks volume"
+  cryptsetup luksFormat /dev/$volume_group/encrypted-$volume_name \
+      --cipher=$cfg_default_cipher --key-size=$cfg_default_keysize \
+      --key-file=$cfg_key_mount/$volume_group-$volume_name.key
 
-lvcreate -L <size> -n encrypted-$volume_name $volume_group
-cryptsetup luksFormat /dev/$volume_group/encrypted-$volume_name \\
-    --cipher=aes-cbc-essiv:sha256 --key-size=256 --key-file=$cfg_key_mount/$volume_group-$volume_name.key
-cryptsetup luksOpen --key-file=$cfg_key_mount/$volume_group-$volume_name.key \\
-     /dev/$volume_group/encrypted-$volume_name cleartext-$volume_name
-mkfs.ext3 /dev/mapper/cleartext-$volume_name
+  echo " + opening luks volume as cleartext-$volume_name"
+  cryptsetup luksOpen --key-file=$cfg_key_mount/$volume_group-$volume_name.key \
+       /dev/$volume_group/encrypted-$volume_name cleartext-$volume_name
 
-REMEMBER TO LOCK THE KEYS AFTERWARD!
-EOF
+  echo " + creating file system"
+  mkfs.$file_system /dev/mapper/cleartext-$volume_name
+
+  echo " + adding basic line to your fstab"
+  echo -e "$volume_name\t$volume_group\t$mount_point\t$file_system\tnodev,nosuid,noexec" >> $cfg_fstab
+ 
+  echo "I have added a line to your $cfg_fstab for you. However,"
+  echo "YOU PROBABLY WANT TO EDIT IT."
 }
 
 function protect_keys() {
@@ -241,6 +302,7 @@ function mount_volumes() {
 case $1 in
   create-volume)
     umount_keys &> /dev/null || true
+    protect_keys;
     mount_keys rw;
     shift;
     create_volume $@;
@@ -269,6 +331,6 @@ case $1 in
 
   
   *)
-    error 1 "unrecognized option $1, typo, maybe?"
+    error 1 "no command line options? Or unrecognized option? $1 typo?"
     ;;
 esac
