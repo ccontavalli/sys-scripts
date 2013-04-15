@@ -1,5 +1,62 @@
 #!/bin/bash
 
+: <<=cut
+=pod
+
+=head1 NAME
+
+ac-system-boot - Completes the boot process of an encrypted system.
+
+=head1 SYNOPSIS
+
+ac-system-boot mounts all the encrypted parations managed with the 
+ac-dmcrypt-manage, and then starts all the services that depend on
+those parations.
+
+=head1 USE
+
+Start by creating a set of encrypted partitions with
+C<ac-dmcrypt-manage create-volume>. If you have services running on
+your system that depend on those partitions, run
+C<ac-system-boot add servicename>, where C<servicename> is the name
+you would use with C</etc/init.d/servicename restart> or
+C<service servicename restart>.
+
+Next time your system is rebooted those services will not be started,
+and the encrypted partitions will not be mounted. ssh into the box,
+run C<ac-system-boot start>, you will be prompted for your passphrase
+and the system will finally mount all the encrypted partitions and
+start all the services that you added.
+
+=head1 PARAMETERS
+
+=over 2
+
+=item start
+
+Mounts all encrypted partitions, starts all the services you previously
+added.
+
+=item add C<servicename>
+
+Makes sure the specified servicename is not started automatically at boot,
+but instead is started by ac-system-boot once the encrypted partitions
+are available.
+
+=item del C<servicename>
+
+Makes sure C<servicename> is automatically started at boot by the standard
+init scripts, and removed from ac-system-boot configurations.
+
+=item stop
+
+Stops all the services you previously added, unmounts all encrypted
+partitions.
+
+=back
+
+=cut
+
 base=$(dirname $(readlink -f $(which $0)))
 cfg_conf=${cfg_conf-$base/../conf}
 cfg_services=${cfg_service-$cfg_conf/services}

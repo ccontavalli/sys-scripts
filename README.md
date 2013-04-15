@@ -1,9 +1,10 @@
 What is this?
 =============
 
-This git repository contains a set of system scripts we use often to configure
-Debian / Linux systems. It has utilities used to configure firewalling, mount
-encrypted partitions after boot, or maintenance cron jobs.
+This git repository contains a set of system scripts and utilities commonly
+uset to maintain Debian GNU/Linux systems. Some of the scripts are used to
+setup firewalling, encrypted partitions, or to regularly perform maintenances
+through cron jobs.
 
 Scripts are grouped by what they are used for, read the next few sections to
 know more.
@@ -17,9 +18,9 @@ your system (`apt-get install perl-doc`).
 Managing encrypted volumes
 ==========================
 
-Let's say you have a linux server in a remote datacenter. Let's say you want
-to be able to reboot this server easily, while still keeping all your data
-encrypted. A common way to achieve this is to:
+Let's say you have a linux server in a remote datacenter and you want to
+keep all of your users data encrypted, while still maintaining the ability
+to reboot the system without being there, a common solution is to:
 
 1. Have an encrypted root that can boot without manual interactions. From
    this root, start ssh and only basic services.
@@ -30,13 +31,33 @@ There are several ways to achieve this. In this repository, you can find:
 
    * [ac-dmcrypt-manage](docs/README.ac-dmcrypt-manage)
 
-     It allows you to enter a single passphrase to decrypt a volume containing
-     a set of keys and mount all the volumes described in a fstab style file.
+     It allows you to manage, mount, and unmount encrypted volumes by
+     storing keys on an encrypted partition, and using a single passphrase
+     to access keys. Use this tool to setup encrypted partitions.
 
    * [ac-system-boot](docs/README.ac-system-boot)
 
-     It will invoke `ac-dmcrypt-manage` and continue the boot process by
-     (re-)starting a list of daemons you provided.
+     It allows you to mount encrypted partitions and restart services
+     with a single command. It is handy if you keep, for example, your
+     mysql or http data encrypted. In this case, you want to not start
+     mysql (or apache) until the necessary partitions are mounted.
+     By invoking ac-system-boot, your encrypted partitions will be started
+     and the systems that depend on them will be restarted.
+
+How to use the two scripts:
+
+1. Create a set of encrypted volumes using `ac-dmcrypt-manage create-volume`.
+   You can now mount them by using `ac-dmcrypt-manage start`.
+
+2. If you have services running on your system that depend on those volumes,
+   run `ac-system-boot add servicename`, where `servicename` is the name of
+   the service you would use with `/etc/init.d/servicename restart` or
+   `service servicename restart`.
+
+3. Next time your system is rebooted, the encrypted partitions and those
+   services will not start automatically. All you have to do is run
+   `ac-system-boot start`. It will mount the encrypted partitions, and
+   start all the services.
 
 
 Other utility scripts

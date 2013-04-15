@@ -1,0 +1,47 @@
+AC-SYSTEM-BOOT(1)     User Contributed Perl Documentation    AC-SYSTEM-BOOT(1)
+
+
+
+NAME
+       ac-system-boot - Completes the boot process of an encrypted system.
+
+SYNOPSIS
+       ac-system-boot mounts all the encrypted parations managed with the ac-
+       dmcrypt-manage, and then starts all the services that depend on those
+       parations.
+
+USE
+       Start by creating a set of encrypted partitions with "ac-dmcrypt-manage
+       create-volume". If you have services running on your system that depend
+       on those partitions, run "ac-system-boot add servicename", where
+       "servicename" is the name you would use with "/etc/init.d/servicename
+       restart" or "service servicename restart".
+
+       Next time your system is rebooted those services will not be started,
+       and the encrypted partitions will not be mounted. ssh into the box, run
+       "ac-system-boot start", you will be prompted for your passphrase and
+       the system will finally mount all the encrypted partitions and start
+       all the services that you added.
+
+PARAMETERS
+       start
+	 Mounts all encrypted partitions, starts all the services you
+	 previously added.
+
+       add "servicename"
+	 Makes sure the specified servicename is not started automatically at
+	 boot, but instead is started by ac-system-boot once the encrypted
+	 partitions are available.
+
+       del "servicename"
+	 Makes sure "servicename" is automatically started at boot by the
+	 standard init scripts, and removed from ac-system-boot
+	 configurations.
+
+       stop
+	 Stops all the services you previously added, unmounts all encrypted
+	 partitions.
+
+
+
+perl v5.14.2			  2013-04-15		     AC-SYSTEM-BOOT(1)
