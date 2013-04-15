@@ -28,12 +28,12 @@ encrypted. A common way to achieve this is to:
 
 There are several ways to achieve this. In this repository, you can find:
 
-   * [ac-dmcrypt-manage](README.ac-dmcrypt-manage)
+   * [ac-dmcrypt-manage](docs/README.ac-dmcrypt-manage)
 
      It allows you to enter a single passphrase to decrypt a volume containing
      a set of keys and mount all the volumes described in a fstab style file.
 
-   * *ac-system-boot*
+   * [ac-system-boot](docs/README.ac-system-boot)
 
      It will invoke `ac-dmcrypt-manage` and continue the boot process by
      (re-)starting a list of daemons you provided.
@@ -42,7 +42,7 @@ There are several ways to achieve this. In this repository, you can find:
 Other utility scripts
 =====================
 
-*ac-system-backup*, trivial rsync wrapper to pass all the normal options you
+   * *ac-system-backup*, trivial rsync wrapper to pass all the normal options you
 should use to backup an entire remote system.
 
 

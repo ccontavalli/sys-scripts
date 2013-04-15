@@ -1,7 +1,10 @@
-.PHONY: docs
+.PHONY: docs clean
 
-docs: README.ac-dmcrypt-manage
+docs: docs/README.ac-dmcrypt-manage docs/README.ac-system-backup
 
-README.ac-dmcrypt-manage:
-	perldoc ac-dmcrypt-manage |col -b > ./README.ac-dmcrypt-manage
+docs/README.%:
+	perldoc $* |col -b > ./$@
+
+clean:
+	rm -f ./docs/README.ac-*
 

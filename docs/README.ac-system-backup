@@ -1,0 +1,48 @@
+AC-SYSTEM-BACKUP(1)   User Contributed Perl Documentation  AC-SYSTEM-BACKUP(1)
+
+
+
+NAME
+       ac-system-backup - Dead simple script to backup an entire remote
+       system.
+
+SYNOPSIS
+       ac-system-backup remote.host.name.net /destination/path/for/backup
+
+DESCRIPTION
+       This script just runs rsync with a pre-defined list of excludes and
+       parameters to backup a remote system in a local directory. This script
+       should be run as root if you want all uid / gid information to be
+       preserved.
+
+       Note that the default parameters passed will try to preserve hard
+       links, ACLs and extended attributes, among other things.
+
+EXAMPLES
+       To backup the server "inscatolati.net" in the directory
+       /opt/backup/inscatolati, you can use:
+
+	 ac-system-backup inscatolati.net /opt/backup/inscatolati
+
+       Note that the script will try to connect as root@inscatolati.net, and
+       rsync / in /opt/backup/inscatolati.
+
+PARAMETERS
+       You can pass environment variables to override some of the default
+       parameters.
+
+       user (defaults to root), to override the user to connect as.
+       options (defaults to hHaAX), to override the options to use.
+       bwlimit (default to 200 Kb/s), to override how much bandwidth to use.
+
+       For example:
+
+	 user="backup" ac-system-backup inscatolati.net /opt/backup/inscatolati
+
+       or:
+
+	 bwlimit="1000" ac-system-backup inscatolati.net /opt/backup/inscatolati
+
+
+
+perl v5.14.2			  2013-04-15		   AC-SYSTEM-BACKUP(1)

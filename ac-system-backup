@@ -1,10 +1,62 @@
 #!/bin/bash
 
-# Dead simple script to backup an entire system with rsync. Mostly useful to
-# have a good starting point in terms of options and excluded directories.
+: <<=cut
+=pod
+
+=head1 NAME
+
+ac-system-backup - Dead simple script to backup an entire remote system.
+
+=head1 SYNOPSIS
+
+ac-system-backup remote.host.name.net /destination/path/for/backup
+
+=head1 DESCRIPTION
+
+This script just runs rsync with a pre-defined list of excludes and parameters
+to backup a remote system in a local directory. This script should be run as
+root if you want all uid / gid information to be preserved.
+
+Note that the default parameters passed will try to preserve hard links, ACLs and
+extended attributes, among other things.
+
+=head1 EXAMPLES
+
+To backup the server "inscatolati.net" in the directory /opt/backup/inscatolati,
+you can use:
+
+  ac-system-backup inscatolati.net /opt/backup/inscatolati
+
+Note that the script will try to connect as root@inscatolati.net, and rsync / in
+/opt/backup/inscatolati.
+
+=head1 PARAMETERS
+
+You can pass environment variables to override some of the default parameters.
+
+=over 2
+
+=item user (defaults to root), to override the user to connect as.
+
+=item options (defaults to hHaAX), to override the options to use.
+
+=item bwlimit (default to 200 Kb/s), to override how much bandwidth to use.
+
+=back
+
+For example:
+
+  user="backup" ac-system-backup inscatolati.net /opt/backup/inscatolati
+
+or:
+
+  bwlimit="1000" ac-system-backup inscatolati.net /opt/backup/inscatolati
+
+=cut
 
 user=${user-root}
 options=${options-hHaAX}
+bwlimit=${bwlimit-200}
 host="$1"
 target="$2"
 
