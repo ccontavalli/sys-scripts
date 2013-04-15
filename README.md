@@ -42,8 +42,15 @@ There are several ways to achieve this. In this repository, you can find:
 Other utility scripts
 =====================
 
-   * *ac-system-backup*, trivial rsync wrapper to pass all the normal options you
-should use to backup an entire remote system.
+   * [ac-system-backup](docs/README.ac-system-backup)
+
+     Trivial rsync wrapper to pass all the normal options you should use to
+     backup an entire remote system.
+
+   * [lsc](docs/README.lsc)
+
+     Small interpreter to save typing on firewalling, traffic shaping, and
+     many other kinds of scripts.
 
 
 LICENSE

@@ -1,0 +1,94 @@
+LSC(1)		      User Contributed Perl Documentation		LSC(1)
+
+
+
+NAME
+       lsc - Turns curly bracketed blocks in separate commands.
+
+SYNOPSIS
+       Lazy Scripter, lsc, is a tiny interpreter to turn blocks of commands
+       surrounded by curly brackets in commands. It is best explaned through
+       examples.
+
+       Let's say you have an input file called "configure-firewall" that
+       contains:
+
+       iptables {
+	 -N {
+	   external
+	   internal
+	 }
+
+	 -A external {
+	   -p tcp -j ACCEPT
+	   -p udp -j DROP
+	 }
+       }
+
+       Now run "lsc configure-firewall". lsc will execute the following
+       commands:
+
+       iptables -N external
+
+       iptables -N internal
+
+       iptables -A external -p tcp -j ACCEPT
+
+       iptables -A external -p udp -j DROP
+
+LANGUAGE FEATURES
+       By now, you probably understand what the curly brackets do. Let's go
+       over a few additional features:
+
+       ##!<your shell>, for example ##!/bin/zsh
+	 It allows you to specify an alternative shell to use to run your
+	 commands. By default lsc will use /bin/sh.
+
+       ' (single quote)
+	 To run commands unchanged, regardless of the indentation block where
+	 they are. For example:
+
+	 echo foo {
+	   bar {
+	    test
+	    ' echo wrong
+	    toast
+	   }
+	   baz }
+
+	 will run:
+
+	 echo foo bar test echo wrong echo foo bar toast echo baz
+
+	 Note the second line, "echo wrong" is run unmodified.
+
+       using variables and other constructs
+	 If you have a script like:
+
+	 COMMAND=iptables . /etc/configs
+
+	 $COMMAND {
+	   foo
+	   bar }
+
+	 It will work as expected. Note that in the end, your code will be run
+	 by /bin/sh or the interpreter you picked with ##!.
+
+       using lsc as an interpreter
+	 Let's say you install "lsc" in "/opt/scripts". You can modify your
+	 lsc scripts to have:
+
+	 #!/opt/scripts/lsc ##!/bin/sh
+
+	 and "chmod 0755 yourscript". This will allow you to run your script
+	 directly.
+
+OPTIONS
+       Lazy Scripter takes only two options:
+
+       -n, to print the commands it would run, without actually running them.
+       -i, to print line numbers when -n is used.
+
+
+
+perl v5.14.2			  2013-04-15				LSC(1)

@@ -1,5 +1,116 @@
 #!/usr/bin/perl -w
 
+=pod
+
+=head1 NAME
+
+lsc - Turns curly bracketed blocks in separate commands.
+
+=head1 SYNOPSIS
+
+Lazy Scripter, lsc, is a tiny interpreter to turn blocks of commands surrounded
+by curly brackets in commands. It is best explaned through examples.
+
+Let's say you have an input file called "configure-firewall" that contains:
+
+iptables {
+  -N {
+    external
+    internal
+  }
+
+  -A external {
+    -p tcp -j ACCEPT
+    -p udp -j DROP
+  }
+}
+
+Now run "lsc configure-firewall". lsc will execute the following commands:
+
+iptables -N external
+
+iptables -N internal
+
+iptables -A external -p tcp -j ACCEPT
+
+iptables -A external -p udp -j DROP
+
+=head1 LANGUAGE FEATURES
+
+By now, you probably understand what the curly brackets do. Let's go over a few
+additional features:
+
+=over 2
+
+=item ##!<your shell>, for example ##!/bin/zsh
+
+It allows you to specify an alternative shell to use to run your commands. By default
+lsc will use /bin/sh.
+
+=item ' (single quote)
+
+To run commands unchanged, regardless of the indentation block where they are. For example:
+
+echo foo {
+  bar {
+   test
+   ' echo wrong
+   toast
+  }
+  baz
+}
+
+will run:
+
+echo foo bar test
+echo wrong
+echo foo bar toast
+echo baz
+
+Note the second line, C<echo wrong> is run unmodified.
+
+=item using variables and other constructs
+
+If you have a script like:
+
+COMMAND=iptables
+. /etc/configs
+
+$COMMAND {
+  foo
+  bar
+}
+
+It will work as expected. Note that in the end, your code will be run by
+/bin/sh or the interpreter you picked with ##!.
+
+=item using lsc as an interpreter
+
+Let's say you install C<lsc> in C</opt/scripts>. You can modify your lsc scripts to
+have:
+
+#!/opt/scripts/lsc
+##!/bin/sh
+
+and C<chmod 0755 yourscript>. This will allow you to run your script directly.
+
+=back
+
+=head1 OPTIONS
+
+Lazy Scripter takes only two options:
+
+=over 2
+
+=item -n, to print the commands it would run, without actually running them.
+
+=item -i, to print line numbers when -n is used.
+
+=back
+ 
+=cut
+
+
 # Lazy SCripter version 0.02 
 #
 # Copyright (C) 2001-2013 Carlo Contavalli <ccontavalli@gmail.com>
