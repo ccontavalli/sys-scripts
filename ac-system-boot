@@ -1,0 +1,78 @@
+#!/bin/bash
+
+base=$(dirname $(readlink -f $(which $0)))
+cfg_conf=${cfg_conf-$base/../conf}
+cfg_services=${cfg_service-$cfg_conf/services}
+
+function error() {
+  script=$(readlink -f $(which $0))
+
+  echo "$2" 1>&2
+  echo "Use 'perldoc $script' for usage instructions." 1>&2
+  exit $1
+}
+
+function services() {
+  test -r "$cfg_services" || {
+    echo "no services file, nothing to start" 1>&2
+    return
+  }
+
+  while read service; do
+    case "$service" in
+      ""|\#*) continue;;
+    esac
+
+    service $service $@
+  done < "$cfg_services"
+}
+
+test "$UID" == 0 || error 3 "must be root to use this script, 'sudo $0'."
+
+case $1 in
+  start)
+    $base/ac-dmcrypt-manage start
+    services $@
+    ;;
+
+  stop)
+    services $@
+    $base/ac-dmcrypt-manage stop
+    ;;
+
+  del)
+    shift
+    for service in $@; do
+      grep "^${service}$" "$cfg_services" &>/dev/null || {
+        echo "WARNING: service $service unknown, not in $cfg_services, skipping"
+        continue
+      }
+      
+      echo "+ removing $service from $cfg_services"
+      sed -i -e "/^${service}$/d" "$cfg_services"
+      echo "+ enabling $service as system service"
+      update-rc.d "$service" enable
+    done
+    ;;
+  
+  add)
+    shift
+    for service in $@; do
+      if  update-rc.d "$service" disable &>/dev/null; then
+        if grep "^${service}$" "$cfg_services" &>/dev/null; then
+          echo "WARNING: $service already added"
+        else
+          echo "$service added, will be started by this script"
+          echo "$service" >> "$cfg_services"
+        fi
+      else
+        echo "ERROR: $service does not exist - skipping" 1>&2
+      fi
+    done
+    ;;
+
+  *)
+    error 1 "no command line options? Or unrecognized option? $1 typo?"
+    ;;
+esac
+

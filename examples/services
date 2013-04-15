@@ -1,0 +1,2 @@
+# List of services to start after encrypted partitions are mounted.
+apache2

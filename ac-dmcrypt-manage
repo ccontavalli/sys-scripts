@@ -92,7 +92,11 @@ Copyright (C) 2006-2013 Carlo Contavalli, Andrea Ciancone, Fernando Vezzosi
   
 =cut
 
-cfg_fstab=${cfg_fstab-/opt/scripts/conf/ac-fstab}
+# Find the working directory of this script.
+base=$(dirname $(readlink -f $(which $0)))
+cfg_conf=${cfg_conf-$base/../conf}
+
+cfg_fstab=${cfg_fstab-$cfg_conf/ac-fstab}
 cfg_key_mount=${cfg_key_mount-/mnt/keys}
 cfg_key_volume=${cfg_key_volume-system/encrypted-keys}
 cfg_default_cipher=${cfg_default_cipher-aes-cbc-essiv:sha256}
@@ -328,7 +332,6 @@ case $1 in
     umount_keys &> /dev/null || true
     umount_volumes;
     ;;
-
   
   *)
     error 1 "no command line options? Or unrecognized option? $1 typo?"
