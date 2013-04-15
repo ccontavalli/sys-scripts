@@ -45,15 +45,17 @@ iptables {
       -o eth0 -j out-external
     }
     -A out-external {
+      -m state --state ESTABLISHED,RELATED -j ACCEPT
       -m owner --gid-owner network -j ACCEPT
       -m owner --uid-owner postfix -j ACCEPT
       -m owner --gid-owner postfix -j ACCEPT
-      -m state --state ESTABLISHED,RELATED -j ACCEPT
       -p tcp -j REJECT --reject-with tcp-reset
     }
     -A in-external {
       -m state --state ESTABLISHED,RELATED -j ACCEPT
       -m hashlimit -m tcp -p tcp --dport 22 --hashlimit 1/min --hashlimit-mode srcip --hashlimit-name ssh -m state --state NEW -j ACCEPT
+      -p tcp --dport 80 -j ACCEPT
+      -p tcp --dport 25 -j ACCEPT
       -p tcp -j REJECT --reject-with tcp-reset
       -j DROP
     }
