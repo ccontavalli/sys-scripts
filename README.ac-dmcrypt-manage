@@ -1,0 +1,75 @@
+AC-DMCRYPT-MANAGE(1)  User Contributed Perl Documentation AC-DMCRYPT-MANAGE(1)
+
+
+
+NAME
+       ac-mount-all - Mounts and manages encrypted volumes by using keyfiles.
+
+SYNOPSIS
+       ac-mount-all {start|stop|mount-keys|umount-keys|create-volume}
+
+DESCRIPTION
+       The main purpose of this script is to mount a set of encrypted devices
+       on your system, asking for a single passphrase. This single passphrase
+       unlocks a volume containing all the keys, each volume has a different
+       key.
+
+       It reads an fstab style configuration file to determine which
+       partitions to mount, and which parameters to use.
+
+       You must supply at least one parameter:
+
+       start
+	 To mount all the encrypted volumes. Note that each volume will be
+	 properly checked for errors and then mounted. Already mounted volumes
+	 will be ignored, it is save to call this command multiple times on a
+	 running system.
+
+       stop
+	 To unmount all the encrypted filesystems that can safely be
+	 unmounted.
+
+       mount-keys
+	 To mount the partition containing all the encrypted keys. REMEMBER TO
+	 UNMOUNT THEM!	Until then, your keys are exposed!
+
+       umount-keys
+	 To unmount the partition containing all the encrypted keys.
+
+       create-volume
+	 To create a new encrypted volume.
+
+SETUP
+       Before running this script, you must:
+
+       Install all the needed tools:
+	   apt-get install cryptsetup lvm2
+
+       Create a volume where to store all your keys:
+	   lvcreate -L 20M -n encrypted-keys system
+
+       Encrypt the key volume:
+	   cryptsetup luksFormat /dev/system/encrypted-keys \
+	       --cipher=aes-cbc-essiv:sha256 --key-size=256 --verify-passphrase
+
+	 Note that you can use whatever cipher and key size you like the most.
+
+       Format the new volume:
+	   cryptsetup luksOpen /dev/system/encrypted-keys cleartext-keys
+	   mkfs.ext4 /dev/mapper/cleartext-keys
+
+       To create a new volume:
+	 $0 create-volume group name 20G /opt ext4 [extra arguments]
+
+       This command will create a new volume 'name' in the volume group
+       'group' of size 20G. This volume will be mounted in /opt as an ext4
+       filesystem.  The extra arguments are passed to the corresponding mkfs
+       command.
+
+COPYRIGHT
+       Copyright (C) 2006-2013 Carlo Contavalli, Andrea Ciancone, Fernando
+       Vezzosi
+
+
+
+perl v5.14.2			  2013-04-14		  AC-DMCRYPT-MANAGE(1)

@@ -28,12 +28,13 @@ encrypted. A common way to achieve this is to:
 
 There are several ways to achieve this. In this repository, you can find:
 
-*ac-dmcrypt-manage*, which allows you to enter a single passphrase to decrypt a
-volume containing a set of keys and mount all the volumes described in a
-fstab style file.
+   * [README.ac-dmcrypt-manage](ac-dmcrypt-manage)
+     It allows you to enter a single passphrase to decrypt a volume containing
+     a set of keys and mount all the volumes described in a fstab style file.
 
-*ac-system-boot*, which will invoke `ac-dmcrypt-manage` and continue the boot
-process by (re-)starting a list of daemons you provided.
+   * *ac-system-boot*
+     It will invoke `ac-dmcrypt-manage` and continue the boot process by
+     (re-)starting a list of daemons you provided.
 
 
 Other utility scripts
