@@ -145,6 +145,8 @@ function create_volume() {
     error 5 "Cannot find mkfs.$file_system, don't know how to create $file_system volume."
   }
 
+  mkdir -p "$mount_point" &> /dev/null || true
+
   echo " + creating volume $volume_group/encrypted-$volume_name of size $volume_size"
   lvcreate -L "$volume_size" -n encrypted-$volume_name $volume_group
   
