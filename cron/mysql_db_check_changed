@@ -1,0 +1,49 @@
+#!/bin/bash
+
+
+# Wed Dec 19 20:05:38 CET 2001 --- Carlo
+#
+# Check all the databases and tryes to correct errors
+
+. $(dirname $(readlink -f $(which $0)))/../include/base
+. $include/mysql
+
+debug='no'
+logging='yes'
+
+loginit
+
+echo "Checking every table that has been modified since last check..." >> $logfile
+
+mysql_list_tables | (
+  while read table; do
+    mysql_query "CHECK TABLE $table CHANGED MEDIUM;"
+  done;
+) | grep -v "Table is already up to date" | (
+  while read table a b status; do
+    if [ "$status" = "OK" ]; then
+      echo "$table OK" # Table Ok is logged only when the table has been checked
+      		       # table is already up to date means that the check has
+		       # been skipped since there is no need to check the table
+      continue;
+    fi
+
+    if echo "$status" | grep -q "doesn't support check"; then
+      echo "$table SKIPPED - doesn't support check"
+      continue;
+    fi
+
+    echo "* Table '$table' status '$status' is not expected. Starting repair."
+    echo "* Backing up table '$table' in /opt/backup/sql/."
+    mysql_backup "$table" '/opt/backup/sql/'
+    echo "* Repairing table with: REPAIR TABLE $table EXTENDED;"
+    mysql_query "REPAIR TABLE $table EXTENDED;" 
+    echo "----"
+  done;
+
+  echo "done." 
+) >> $logfile;
+
+#| #|grep -v "OK$"
+
+logdone

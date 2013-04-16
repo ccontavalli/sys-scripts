@@ -1,0 +1,108 @@
+#!/bin/bash
+
+# Carlo
+# Should not be touched unless the system is moved on another system
+
+bindir=/opt/scripts
+include=${bindir}/include
+internal=${bindir}/internal
+methdir=${bindir}/methods
+logfile=/var/log/scripts.log
+protodir=${internal}/proto
+
+#script_confirm (Ask for confirmation before doing dangerous actions. Default yes)
+#script_verbose (Print output beside errors. Default yes) 
+
+PATH="$bindir:$PATH"
+
+function methods() {
+  for file in $methdir/$(basename $0)/free:*
+  do
+    [ ! -f "$file" ] && continue; 
+    debug "Running method: $file $@"
+    "$file" $@
+  done
+
+  meth=$1; 
+  if [ "$meth" != "" ]; then
+    shift
+    for file in $methdir/$(basename $0)/"$meth"*
+    do
+      [ ! -f "$file" ] && continue; 
+      debug "Running method: $file $@"
+      . "$file" 
+    done
+  fi
+
+}
+
+function pmesg() {
+  if [ "$script_verbose" \!= 'no' ]; then
+		echo -e "$@";
+	fi
+}
+
+function ask_removal() {
+  mesg="$1"
+	abort="$2"
+  if [ "$mesg" = "" -o "$abort" = "" ]; then
+		error 1 ask_removal called with wrong number of arguments\!
+	fi
+	shift
+
+  if [ "$script_confirm" \!= 'no' ]; then
+		echo -e "$mesg"
+    echo -ne "\nAre you sure [yes,NO]? "
+    read ans
+    if [ "$ans" \!= "yes" ]; then
+      error 1 "$@"
+    fi
+  fi
+}
+
+function error() {
+  errcode=$1
+  shift
+  perr "$@" 
+  if [ "$logging" == "yes" ]; then
+    log "$@"
+  fi
+  exit $errcode
+}
+
+function perr() {
+  pmesg "$@" 1>&2
+}
+
+function loginit() {
+(
+  echo "*********************************************** $0"
+  echo $(date) -- Script: $0 
+  echo -e "*******\n"
+) >> "$logfile"
+}
+
+function logdone() {
+(
+  echo -e "*********** $(date) -- $0\n\n"
+) >> "$logfile"
+}
+
+function debug() {
+  if [ "$debug" == "yes" ]; then
+    echo '****' "$@" 1>&2
+  fi
+}
+
+function debex() {
+  if [ "$debug" == "yes" ]; then
+    echo '***' "$@" 1>&2
+  else
+    "$@"
+  fi
+}
+
+function log() {
+  debex logger -p cron.notice -t $(basename $0) "$@"
+}
+

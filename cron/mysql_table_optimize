@@ -1,0 +1,26 @@
+#!/bin/bash
+
+
+# Wed Dec 19 20:05:38 CET 2001 --- Carlo
+#
+# Check all the databases and tryes to correct errors
+
+. $(dirname $(readlink -f $(which $0)))/../include/base
+. $include/mysql
+
+debug='no'
+logging='yes'
+
+loginit
+
+# "FAST EXTENDED;" 
+# "CHANGED MEDIUM;" 
+mysql_list_tables | (
+  while read table; do
+    mysql_query "OPTIMIZE TABLE $table;" 
+  done;
+) >> $logfile;
+
+#| #|grep -v "OK$"
+
+logdone

@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Common functions used to deal with mysql 
+
+# Add parameters here to connect to another server
+mysql="mysql $mysql_options"
+
+function mysql_query () {
+  if [ "$1" = "" ]; then
+    error 1 "Missing parameter in call to mysql_query"
+  fi
+
+  debug Mysql query: $@
+	(
+   echo "$@" | $mysql 2> /dev/null
+  ) | tail -n+2
+	
+  if [ "$?" != "0" ]; then
+    error 2 Error in mysql query \($@\);
+  fi
+}
+
+function mysql_list_databases () {
+  mysql_query "SHOW DATABASES;" 
+}
+
+function mysql_backup () {
+  _table=$1;
+  _directory=$2;
+
+  _database=${_table%%.*}
+  _table=${_table#*.}
+
+  mysql_query "BACKUP TABLE \`$_database\`.$_table TO '$_directory';";
+
+  cd "$_directory"; 
+    if [ -e "$_database.$_table" ]; then
+      savelog -l "$_database.$_table";
+    fi
+    tar --remove-files -czf "$_database.$_table" "$_table".{frm,MYD};
+  cd -;
+}
+
+function mysql_restore () {
+  _table=$1;
+  _directory=$2;
+
+  cd "$_directory"; tar -xzf "$_table";
+
+  _database=${_table%%.*}
+  _table=${_table#*.}
+
+  mysql_query "RESTORE TABLE \`$_database\`.$_table FROM '$_directory';";
+  rm "$_database.${_table#*.}".{frm,MYD};
+  cd -;
+}
+
+function mysql_list_tables () {
+  mysql_query "SHOW DATABASES;" |(
+    while read _database; do 
+      mysql_query "SHOW TABLES FROM \`$_database\`;" | (
+        while read _table; do
+          echo "\`$_database\`.$_table"
+        done;
+      );
+    done;
+  ) 
+}
+
+function mysql_escape () {
+  echo -n "$@" | perl -pe 'use Mysql; Mysql->quote("$_");'
+}
