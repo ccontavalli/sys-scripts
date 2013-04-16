@@ -94,6 +94,11 @@ have:
 
 and C<chmod 0755 yourscript>. This will allow you to run your script directly.
 
+=item debugging lsc output
+
+An easy way to debug lsc output is to use C<bash -x> as a shell, or run C<set -x>,
+so the executed commands are printed. You can also use the C<-n> option.
+
 =back
 
 =head1 OPTIONS

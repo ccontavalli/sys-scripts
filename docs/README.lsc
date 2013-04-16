@@ -83,6 +83,11 @@ LANGUAGE FEATURES
 	 and "chmod 0755 yourscript". This will allow you to run your script
 	 directly.
 
+       debugging lsc output
+	 An easy way to debug lsc output is to use "bash -x" as a shell, or
+	 run "set -x", so the executed commands are printed. You can also use
+	 the "-n" option.
+
 OPTIONS
        Lazy Scripter takes only two options:
 
@@ -91,4 +96,4 @@ OPTIONS
 
 
 
-perl v5.14.2			  2013-04-15				LSC(1)
+perl v5.14.2			  2013-04-16				LSC(1)
