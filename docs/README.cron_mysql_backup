@@ -1,0 +1,69 @@
+MYSQL_BACKUP(1)       User Contributed Perl Documentation      MYSQL_BACKUP(1)
+
+
+
+NAME
+       mysql_backup - Backs up all of your mysql tables and databases.
+
+SYNOPSIS
+       mysql_backup BACKUP-FILE [HOW-MANY-TO-KEEP]
+
+DESCRIPTION
+       This script will connect to your local mysql server and backup all
+       databases and table in "BACKUP-FILE". If more than "HOW-MANY-TO-KEEP"
+       files have been saved already, older backups will be removed.
+
+       This is pretty handy in small installations to have a copy of your
+       databases over time. It is not a real backup solution unless you take
+       extra steps to save those files on a remote server or backup media.
+
+SETUP
+       In "/etc/crontab", add something like:
+
+	   17 5 * * * root /scripts/cron/mysql_backup /backup/mysql-dbs 30
+
+       and then run "service cron reload" to have mysql_backup backup all your
+       tables and databases in "/opt/backup/all-databases.bz2" every day at
+       5:17, and keep 30 days of backups.
+
+       Note that the user specified (root, in this case), must have a
+       configuration file ".my.cnf" in his home directory specifying the
+       password to use to access the database, for example:
+
+	   [client]
+	   user=backup
+	   password=yourbackuppassword
+
+       For extra security, you may want to create a dedicated system user:
+
+	   adduser --system --disabled-password mysql-backup
+
+       And dedicated mysql user:
+
+       mysql> GRANT SELECT
+	   ->	  ON *.*
+	   ->	  TO 'mysql-backup'@'localhost'
+	   ->	  IDENTIFIED BY 'myunsecurepassword';
+
+       In which case the ".my.cnf" file would be stored in
+       "/home/mysql-backup" and could contain:
+
+	   [client]
+	   user=mysql-backup
+	   password=myunsecurepassowrd
+
+       You would also need to modify "/etc/crontab" to have mysql-backup
+       instead of root:
+
+	   17 5 * * * mysql-backup /scripts/cron/mysql_backup /backup/mysql-dbs 30
+
+NOTES
+       This script requires "bzip2", "mysqldump" and "savelog" to be run.
+
+       By default it only locks tables (-l), does not use -x nor
+       --single-transaction.  This means the data is not guaranteed to be
+       consistent across databases.
+
+
+
+perl v5.14.2			  2013-04-16		       MYSQL_BACKUP(1)
