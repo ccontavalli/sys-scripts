@@ -71,6 +71,14 @@ The `cron` directory contains several scripts useful as cron jobs. In particular
      store the backup of your mysql tables, and a number, indicating how many
      to keep. Requires "savelog" to be available on your system.
 
+   * *mysql_db_{optimize,check_changed,check_crashed}*
+
+     Those scripts have been removed from the archive. They predated the command
+     line tool `mysqlcheck`. The equivalent for mysql_db_optimize is
+     `mysqlcheck -A --optimize`, for mysql_check_changed `mysqlcheck -A -C --auto-repair`,
+     for mysql_db_check_crashed the debian scripts should already take care of the
+     check at mysql restart.
+
 
 Other utility scripts
 =====================
