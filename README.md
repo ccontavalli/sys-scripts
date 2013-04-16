@@ -65,7 +65,7 @@ Cron jobs and periodic tasks
 
 The `cron` directory contains several scripts useful as cron jobs. In particular:
 
-   * [mysql_backup](docs/README.mysql_backup)
+   * [mysql_backup](docs/README.cron_mysql_backup)
 
      Backs up all of your mysql tables. Takes two arguments: a path, where to
      store the backup of your mysql tables, and a number, indicating how many
