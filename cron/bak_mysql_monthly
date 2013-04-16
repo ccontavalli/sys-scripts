@@ -1,5 +1,0 @@
-#!/bin/bash
-
-find /opt/backup/mysql-monthly/ -mtime +720 |xargs -r rm
-mysqldump --all -A --add-drop-table -c -e -l -Q |bzip2 -9 >/opt/backup/mysql-monthly/all-databases.sql.bz2
-savelog -d -c 24 -l /opt/backup/mysql-monthly/all-databases.sql.bz2 &>/dev/null

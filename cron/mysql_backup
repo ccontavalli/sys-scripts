@@ -1,0 +1,86 @@
+#!/bin/bash
+
+: <<=cut
+=pod
+
+=head1 NAME
+
+mysql_backup - Backs up all of your mysql tables and databases.
+
+=head1 SYNOPSIS
+
+mysql_backup BACKUP-FILE [HOW-MANY-TO-KEEP]
+
+=head1 DESCRIPTION
+
+This script will connect to your local mysql server and backup all
+databases and table in C<BACKUP-FILE>. If more than C<HOW-MANY-TO-KEEP>
+files have been saved already, older backups will be removed.
+
+This is pretty handy in small installations to have a copy of your databases
+over time. It is not a real backup solution unless you take extra steps to
+save those files on a remote server or backup media.
+
+=head1 SETUP
+
+In C</etc/crontab>, add something like:
+
+    17 5 * * * root /scripts/cron/mysql_backup /backup/mysql-dbs 30
+
+and then run C<service cron reload> to have mysql_backup backup all your tables
+and databases in C</opt/backup/all-databases.bz2> every day at 5:17, and keep 30
+days of backups.
+
+Note that the user specified (root, in this case), must have a configuration
+file C<.my.cnf> in his home directory specifying the password to use to access
+the database, for example:
+
+    [client]
+    user=backup
+    password=yourbackuppassword
+
+
+For extra security, you may want to create a dedicated system user:
+
+    adduser --system --disabled-password mysql-backup
+
+And dedicated mysql user:
+
+mysql> GRANT SELECT
+    ->     ON *.*
+    ->     TO 'mysql-backup'@'localhost'
+    ->     IDENTIFIED BY 'myunsecurepassword';
+
+In which case the C<.my.cnf> file would be stored in C</home/mysql-backup>
+and could contain:
+
+    [client]
+    user=mysql-backup
+    password=myunsecurepassowrd
+
+You would also need to modify C</etc/crontab> to have mysql-backup instead
+of root:
+
+    17 5 * * * mysql-backup /scripts/cron/mysql_backup /backup/mysql-dbs 30
+
+=head1 NOTES
+
+This script requires C<bzip2>, C<mysqldump> and C<savelog> to be run.
+
+By default it only locks tables (-l), does not use -x nor --single-transaction.
+This means the data is not guaranteed to be consistent across databases.
+=cut
+
+destination="$1"
+keep="$2"
+
+test -n "$destination" || {
+  echo "$0: requires a destination file to be specified." 1>&2
+  echo "Use 'perldoc $0' for more documentation." 1>&2
+  exit 1
+}
+
+test -n "$keep" || keep=30;
+
+mysqldump -Y -A --add-drop-table -c -e -l -Q |bzip2 -9 > "$destination".bz2
+savelog -d -C -c "$keep" -l "$destination".bz2 &>/dev/null
